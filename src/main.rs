@@ -96,9 +96,11 @@ async fn main() -> anyhow::Result<()> {
             let hdr_supported = monitor.properties.supported_color_modes.as_ref().is_some_and(|modes| modes.contains(&MonitorColorMode::BT2100));
             let color_mode = args.hdr.map(|hdr| if hdr {MonitorColorMode::BT2100} else {MonitorColorMode::Default})
                 .unwrap_or(monitor.properties.color_mode.unwrap_or(MonitorColorMode::Default));
-            if color_mode == MonitorColorMode::BT2100 && !hdr_supported {
-                return Err(anyhow!("display \"{}\" does not support HDR", args.connector));
-            }
+            let color_mode = match(color_mode, hdr_supported) {
+                (MonitorColorMode::BT2100, false) => return Err(anyhow!("display \"{}\" does not support HDR", args.connector)),
+                (MonitorColorMode::Default, false) => None,
+                (mode, true) => Some(mode),
+            };
 
             proxy.apply_monitors_config(
                 current_state.serial, 
@@ -115,7 +117,7 @@ async fn main() -> anyhow::Result<()> {
                             mode: matching_mode.id.clone(),
                             properties: apply_monitors_config::MonitorProperties {
                                 underscanning: None,
-                                color_mode: Some(color_mode),
+                                color_mode: color_mode,
                             }
                         }]
                     }
