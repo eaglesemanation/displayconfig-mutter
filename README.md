@@ -48,8 +48,14 @@ Options:
 
 ## Installation
 
-### Nix
-
+### NixOS / Nix
 ```
 nix run github:eaglesemanation/displayconfig-mutter -- help
 ```
+
+### Arch Linux
+Available through AUR. You can clone it and build it manually, or use one of many AUR helpers, such as [yay](https://github.com/Jguer/yay)
+```
+yay -S displayconfig-mutter
+```
+

@@ -1,0 +1,55 @@
+name: Publish release packages
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.release_version.outputs.release_version }}
+    steps:
+      - id: release_version
+        run: |
+          TAG=${{ github.event.release.tag_name }}
+          echo "release_version=${TAG#v}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - run: cargo build --release
+
+  publish-aur:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: heyhusen/archlinux-package-action@v2
+        with:
+          path: dist/aur/PKGBUILD
+          pkgver: ${{ needs.build.outputs.release_version }}
+          # Assuming that any package release change will require manual intervention anyway
+          # so skipping this workflow entierly
+          pkgrel: 1
+          srcinfo: true
+          updpkgsums: true
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Update AUR PKGBUILD to v${{ needs.build.outputs.release_version }}
+          file_pattern: displayconfig-mutter/dist/aur/PKGBUILD
+      - uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.AUR_KNOWN_HOSTS }}
+      - name: Clone AUR repo
+        run: git -c init.defaultBranch=master clone ssh://aur@aur.archlinux.org/displayconfig-mutter.git aur-displayconfig-mutter
+      - name: Update PKGBUILD and SRCINFO in AUR repo
+        run: |
+          cp dist/aur/PKGBUILD dist/aur/.SRCINFO aur-displayconfig-mutter/
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          repository: aur-repo
+          commit_message: Release v${{ needs.build.outputs.release_version }}
+
