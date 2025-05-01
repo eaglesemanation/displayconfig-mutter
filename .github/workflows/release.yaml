@@ -46,7 +46,7 @@ jobs:
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: Update release files to v${{ needs.build.outputs.release_version }}
+          commit_message: Update release files to v${{ steps.release_version.outputs.release_version }}
       - uses: ncipollo/release-action@v1
         with:
           commit: main
@@ -65,6 +65,7 @@ jobs:
           path: dist/arch
           srcinfo: true
           updpkgsums: true
+          aur: true
       - uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
