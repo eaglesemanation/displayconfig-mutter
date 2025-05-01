@@ -177,14 +177,19 @@ fn list_modes(current_state: get_current_state::Response, connector: impl AsRef<
     let mut table = Table::new();
     table
         .load_preset(UTF8_FULL)
-        .set_header(vec!["Connector", "Resolutions", "Refresh rates"]);
+        .set_header(vec!["Connector", "Resolutions", "Refresh rates", "Scales"]);
     let monitor = current_state.monitors.iter().find(|monitor| monitor.id.connector == connector.as_ref()).ok_or(anyhow!("Could not find a monitor with \"{}\" as a connector", connector.as_ref()))?;
 
     let mut resolutions = HashSet::new();
     let mut refresh_rates = HashSet::new();
+    let mut scales = HashSet::new();
     for mode in &monitor.modes {
         resolutions.insert((mode.width, mode.height));
         refresh_rates.insert(mode.refresh_rate.round_ties_even() as u32);
+        for scale in &mode.supported_scales {
+            // Round to a closest quarter
+            scales.insert(format!("{}%", ((scale * 4.0).round() / 4.0 * 100.0) as u32));
+        }
     }
 
     let mut resolutions: Vec<_> = resolutions.into_iter().collect();
@@ -196,10 +201,14 @@ fn list_modes(current_state: get_current_state::Response, connector: impl AsRef<
     let mut refresh_rates: Vec<_> = refresh_rates.into_iter().collect();
     refresh_rates.sort();
     refresh_rates.reverse();
+    let mut scales: Vec<_> = scales.into_iter().collect();
+    scales.sort();
+    scales.reverse();
     table.add_row(vec![
         connector.as_ref().to_string(), 
         resolutions.into_iter().map(|(width, height)| format!("{width}x{height}")).collect::<Vec<_>>().join("\n"), 
-        refresh_rates.iter().map(u32::to_string).collect::<Vec<_>>().join("\n")
+        refresh_rates.iter().map(u32::to_string).collect::<Vec<_>>().join("\n"),
+        scales.join("\n"),
     ]);
     println!("{table}");
     Ok(())
