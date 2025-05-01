@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_version: ${{ steps.release_version.outputs.release_version }}
+    permissions:
+      contents: write
     steps:
       - name: Validate user input
         id: release_version
