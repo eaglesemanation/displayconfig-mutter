@@ -57,15 +57,20 @@ jobs:
   publish-aur:
     runs-on: ubuntu-latest
     needs: validate-and-patch
+    container: archlinux:base-devel
     steps:
       - uses: actions/checkout@v4
-      - name: Build SRCINFO
-        uses: heyhusen/archlinux-package-action@v2
-        with:
-          path: dist/arch
-          srcinfo: true
-          updpkgsums: true
-          aur: true
+      - name: Update checksums and generate source info
+        run: |
+          pacman-key --init
+          pacman -Syy --noconfirm pacman-contrib
+
+          useradd --no-create-home --shell=/bin/false build
+          echo "build ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          cd dist/arch
+          su build
+          updpkgsums
+          makepkg --printsrcinfo > .SRCINFO
       - uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}

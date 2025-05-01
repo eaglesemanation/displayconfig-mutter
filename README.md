@@ -59,3 +59,9 @@ Available through AUR. You can clone it and build it manually, or use one of man
 yay -S displayconfig-mutter
 ```
 
+### Fedora Linux
+Available through COPR.
+```
+dnf copr enable eaglesemanation/displayconfig-mutter
+dnf install displayconfig-mutter
+```
