@@ -36,14 +36,8 @@ jobs:
         run: |
           cargo bump ${{ steps.release_version.outputs.release_version }}
       - name: Update PKGBUILD version 
-        uses: heyhusen/archlinux-package-action@v2
-        with:
-          path: dist/arch
-          pkgver: ${{ needs.build.outputs.release_version }}
-          # Assuming that any package release change will require manual intervention anyway
-          # so skipping this workflow entierly
-          pkgrel: 1
-          updpkgsums: true
+        run: |
+          sed -i -E "s/^(pkgver=).*/\1${{ steps.release_version.outputs.release_version }}/" dist/arch/PKGBUILD
       - name: Update RPM spec version
         run: |
           sed -i -E "s/^(Version:\W+).*/\1${{ steps.release_version.outputs.release_version }}/" dist/rpm/fedora.spec
@@ -68,6 +62,7 @@ jobs:
         with:
           path: dist/arch
           srcinfo: true
+          updpkgsums: true
       - uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
