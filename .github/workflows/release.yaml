@@ -60,28 +60,12 @@ jobs:
     container: archlinux:base-devel
     steps:
       - uses: actions/checkout@v4
-      - name: Update checksums and generate source info
-        run: |
-          pacman-key --init
-          pacman -Syy --noconfirm pacman-contrib
-
-          useradd --no-create-home --shell=/bin/false build
-          echo "build ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          cd dist/arch
-          su build
-          updpkgsums
-          makepkg --printsrcinfo > .SRCINFO
-      - uses: shimataro/ssh-key-action@v2
+      - uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
         with:
-          key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          known_hosts: ${{ secrets.AUR_KNOWN_HOSTS }}
-      - name: Clone AUR repo
-        run: git -c init.defaultBranch=master clone ssh://aur@aur.archlinux.org/displayconfig-mutter.git aur-displayconfig-mutter
-      - name: Update PKGBUILD and SRCINFO in AUR repo
-        run: |
-          cp dist/aur/PKGBUILD dist/aur/.SRCINFO aur-displayconfig-mutter/
-      - uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          repository: aur-repo
-          commit_message: Release v${{ needs.build.outputs.release_version }}
+          pkgname: displayconfig-mutter
+          pkgbuild: dist/arch/PKGBUILD
+          commit_username: eaglesemanation
+          commit_email: eaglesemanation@gmail.com
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: Release ${{ needs.validate-and-patch.outputs.release_version }}
 
