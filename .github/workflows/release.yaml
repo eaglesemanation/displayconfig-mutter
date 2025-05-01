@@ -1,44 +1,73 @@
 name: Publish release packages
 
 on:
-  release:
-    types: [created]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "New version number"
+        required: true
+        type: string
 
 jobs:
-  build:
+  validate-and-patch:
     runs-on: ubuntu-latest
     outputs:
       release_version: ${{ steps.release_version.outputs.release_version }}
     steps:
-      - id: release_version
+      - name: Validate user input
+        id: release_version
         run: |
-          TAG=${{ github.event.release.tag_name }}
-          echo "release_version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          VERSION=${{ inputs.version }}
+          (echo $VERSION | grep -Eq '^v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$') || echo '::error title=Invalid version::Workflow expects version input to be in form of "v{major}.{minor}.{patch}"'
+          echo "release_version=${VERSION#v}" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
+      - run: cargo test
       - run: cargo build --release
 
-  publish-aur:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - uses: actions/checkout@v4
-      - uses: heyhusen/archlinux-package-action@v2
+      - uses: taiki-e/install-action@v2
         with:
-          path: dist/aur/PKGBUILD
+          tool: cargo-bump
+      - name: Update Cargo.toml version
+        run: |
+          cargo bump ${{ steps.release_version.outputs.release_version }}
+      - name: Update PKGBUILD version 
+        uses: heyhusen/archlinux-package-action@v2
+        with:
+          path: dist/arch
           pkgver: ${{ needs.build.outputs.release_version }}
           # Assuming that any package release change will require manual intervention anyway
           # so skipping this workflow entierly
           pkgrel: 1
-          srcinfo: true
           updpkgsums: true
+      - name: Update RPM spec version
+        run: |
+          sed -i -E "s/^(Version:\W+).*/\1${{ steps.release_version.outputs.release_version }}/" dist/rpm/fedora.spec
+
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: Update AUR PKGBUILD to v${{ needs.build.outputs.release_version }}
-          file_pattern: displayconfig-mutter/dist/aur/PKGBUILD
+          commit_message: Update release files to v${{ needs.build.outputs.release_version }}
+      - uses: ncipollo/release-action@v1
+        with:
+          commit: main
+          tag: v${{ steps.release_version.outputs.release_version }}
+          generateReleaseNotes: true
+          makeLatest: true
+
+  publish-aur:
+    runs-on: ubuntu-latest
+    needs: validate-and-patch
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build SRCINFO
+        uses: heyhusen/archlinux-package-action@v2
+        with:
+          path: dist/arch
+          srcinfo: true
       - uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
