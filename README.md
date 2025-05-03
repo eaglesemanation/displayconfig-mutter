@@ -38,10 +38,10 @@ Options:
   -p, --persistent                   Save config to the disk after applying it. Will prompt for user input to verify if it's correct
   -r, --resolution <RESOLUTION>      New resolution, e.g. 1920x1080, 3840x2160
       --max-resolution               Automatically select highest available refresh rate
-      --refresh-rate <REFRESH_RATE>  Monitor refresh rate
+      --refresh-rate <REFRESH_RATE>  New monitor refresh rate. This is selected on a best effort basis. e.g. if you select 60Hz, while monitor only supports 59.98Hz, it will be selected instead
       --max-refresh-rate             Automatically select highest refresh rate for selected resolution
       --vrr <VRR>                    Controls variable refresh rate [possible values: true, false]
-      --scaling <SCALING>            UI Scaling, as precentage, e.g. 100, 150, 200
+      --scaling <SCALING>            UI Scaling, as precentage, e.g. 100, 150, 200. This is selected based on a closest available scaling with a rounding step of 25%. e.g. if you select 125, while selected resolution only allows for either 124% or 149% - first one will be selected
       --hdr <HDR>                    Controls high dynamic range color mode [possible values: true, false]
   -h, --help                         Print help
 ```

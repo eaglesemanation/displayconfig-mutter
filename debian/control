@@ -1,0 +1,30 @@
+Source: displayconfig-mutter
+Section: misc
+Priority: optional
+Maintainer: Vladimir Romashchenko <eaglesemanation@gmail.com>
+Build-Depends: 
+ debhelper-compat (= 10),
+ dh-cargo,
+ librust-anyhow-dev,
+ librust-clap-dev,
+ librust-clap-derive-dev,
+ librust-serde-dev,
+ librust-serde-derive-dev,
+ librust-serde-repr-dev,
+ librust-tabled-dev,
+ librust-tokio-dev,
+ librust-tokio+full-dev,
+ librust-zbus+tokio-dev
+Vcs-Git: https://github.com/eaglesemanation/displayconfig-mutter.git
+Vcs-Browser: https://github.com/eaglesemanation/displayconfig-mutter
+
+Package: displayconfig-mutter
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends}
+Built-Using: ${cargo:Built-Using}
+X-Cargo-Built-Using: ${cargo:X-Cargo-Built-Using}
+Description: Change Gnome display settings from cli
+ xrandr like app for Gnome DE in Wayland mode. 
+ Allows modifying most parameters that are exposed in "Displays" settings.

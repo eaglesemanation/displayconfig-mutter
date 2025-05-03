@@ -37,7 +37,8 @@ pub struct SetArgs {
     /// Automatically select highest available refresh rate
     #[arg(long, group = "res")]
     pub max_resolution: bool,
-    /// Monitor refresh rate
+    /// New monitor refresh rate. This is selected on a best effort basis. e.g. if you
+    /// select 60Hz, while monitor only supports 59.98Hz, it will be selected instead.
     #[arg(long, group = "refresh")]
     pub refresh_rate: Option<u32>,
     /// Automatically select highest refresh rate for selected resolution
@@ -46,7 +47,9 @@ pub struct SetArgs {
     /// Controls variable refresh rate
     #[arg(long)]
     pub vrr: Option<bool>,
-    /// UI Scaling, as precentage, e.g. 100, 150, 200
+    /// UI Scaling, as precentage, e.g. 100, 150, 200. This is selected based on a closest
+    /// available scaling with a rounding step of 25%. e.g. if you select 125, while selected
+    /// resolution only allows for either 124% or 149% - first one will be selected.
     #[arg(long)]
     pub scaling: Option<u32>,
     /// Controls high dynamic range color mode

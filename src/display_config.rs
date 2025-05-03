@@ -20,12 +20,15 @@ pub mod get_current_state {
     }
 
     #[derive(Debug, Clone, DeserializeDict, SerializeDict, Type)]
-    #[zvariant(signature = "dict", rename_all="kebab-case")]
+    #[zvariant(signature = "dict")]
     pub struct Properties {
+        #[zvariant(rename = "layout-mode")]
         pub layout_mode: Option<LayoutMode>,
         /// True if the layout mode can be changed. Absence of this means the layout mode cannot be changed.
+        #[zvariant(rename = "supports-changing-layout-mode")]
         pub supports_changing_layout_mode: Option<bool>,
         /// True if all the logical monitors must always use the same scale. Absence of this means logical monitor scales can differ.
+        #[zvariant(rename = "global-scale-required")]
         pub global_scale_required: Option<bool>,
     }
 
@@ -76,29 +79,40 @@ pub mod get_current_state {
     }
 
     #[derive(Debug, Clone, DeserializeDict, SerializeDict, Type)]
-    #[zvariant(signature = "dict", rename_all="kebab-case")]
+    #[zvariant(signature = "dict")]
     pub struct MonitorProperties {
         /// physical width of monitor in millimeters
+        #[zvariant(rename = "width-mm")]
         pub width_mm: Option<i32>,
         /// physical height of monitor in millimeters
+        #[zvariant(rename = "height-mm")]
         pub height_mm: Option<i32>,
         /// whether underscanning is enabled (absence of this means underscanning not being supported)
+        #[zvariant(rename = "is-underscanning")]
         pub is_underscanning: Option<bool>,
         /// the maximum size a screen may have (absence of this means unlimited screen size)
+        #[zvariant(rename = "max-screen-size")]
         pub max_screen_size: Option<(i32, i32)>,
         /// whether the monitor is built in, e.g. a laptop panel (absence of this means it is not built in)
+        #[zvariant(rename = "is-builtin")]
         pub is_builtin: Option<bool>,
         /// a human readable display name of the monitor
+        #[zvariant(rename = "display-name")]
         pub display_name: Option<String>,
         /// the state of the privacy screen (absence of this means it is not being supported) first value indicates whether it's enabled and second value whether it's hardware locked (and so can't be changed via gsettings)
+        #[zvariant(rename = "privacy-screen-state")]
         pub privacy_screen_state: Option<(bool, bool)>,
         /// minimum refresh rate of monitor when Variable Refresh Rate is active (absence of this means unknown)
+        #[zvariant(rename = "min-refresh-rate")]
         pub min_refresh_rate: Option<i32>,
         /// whether the monitor is for lease or not
+        #[zvariant(rename = "is-for-lease")]
         pub is_for_lease: Option<bool>,
         /// current color mode
+        #[zvariant(rename = "color-mode")]
         pub color_mode: Option<MonitorColorMode>,
         /// list of supported color modes
+        #[zvariant(rename = "supported-color-modes")]
         pub supported_color_modes: Option<Vec<MonitorColorMode>>,
     }
 
@@ -169,15 +183,19 @@ pub mod get_current_state {
     }
 
     #[derive(Debug, Clone, Type, SerializeDict, DeserializeDict)]
-    #[zvariant(signature = "dict", rename_all="kebab-case")]
+    #[zvariant(signature = "dict")]
     pub struct ModeProperties {
         /// the mode is currently active mode
+        #[zvariant(rename = "is-current")]
         pub is_current: Option<bool>,
         /// the mode is the preferred mode
+        #[zvariant(rename = "is-preferred")]
         pub is_preferred: Option<bool>,
         /// the mode is an interlaced mode
+        #[zvariant(rename = "is-interlaced")]
         pub is_interlaced: Option<bool>,
         /// the refresh rate mode, either "variable" or "fixed" (absence of this means "fixed")
+        #[zvariant(rename = "refresh-rate-mode")]
         pub refresh_rate_mode: Option<RefreshRateMode>,
     }
 
@@ -215,7 +233,7 @@ pub mod get_current_state {
     }
 
     #[derive(Debug, Clone, DeserializeDict, SerializeDict, Type)]
-    #[zvariant(signature = "dict", rename_all="kebab-case")]
+    #[zvariant(signature = "dict")]
     pub struct LogicalMonitorProperties {}
 }
 
@@ -228,9 +246,11 @@ pub mod apply_monitors_config {
 
     /// may effect the global monitor configuration state
     #[derive(Debug, DeserializeDict, SerializeDict, Type, Default)]
-    #[zvariant(signature = "dict", rename_all="kebab-case")]
+    #[zvariant(signature = "dict")]
     pub struct Properties {
+        #[zvariant(rename = "layout-mode")]
         pub layout_mode: Option<LayoutMode>,
+        #[zvariant(rename = "monitors-for-lease")]
         pub monitors_for_lease: Option<Vec<MonitorId>>,
     }
 
@@ -271,9 +291,11 @@ pub mod apply_monitors_config {
     }
 
     #[derive(Debug, Clone, Default, DeserializeDict, SerializeDict, Type)]
-    #[zvariant(signature = "dict", rename_all="kebab-case")]
+    #[zvariant(signature = "dict")]
     pub struct MonitorProperties {
+        #[zvariant(rename = "underscanning")]
         pub underscanning: Option<bool>,
+        #[zvariant(rename = "color-mode")]
         pub color_mode: Option<MonitorColorMode>,
     }
 }

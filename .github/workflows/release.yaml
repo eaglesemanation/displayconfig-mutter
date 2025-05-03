@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_version: ${{ steps.release_version.outputs.release_version }}
+      commit_id: ${{ steps.commit_id.outputs.commit_id }}
     permissions:
       contents: write
     steps:
@@ -28,31 +29,59 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - run: cargo test
-      - run: cargo build --release
-
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-bump
+          tool: cargo-bump,cross
+      - name: Install required packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y devscripts
+
       - name: Update Cargo.toml version
         run: |
           cargo bump ${{ steps.release_version.outputs.release_version }}
       - name: Update PKGBUILD version 
         run: |
-          sed -i -E "s/^(pkgver=).*/\1${{ steps.release_version.outputs.release_version }}/" dist/arch/PKGBUILD
+          sed -i -E "s/^(pkgver=).*/\1${{ steps.release_version.outputs.release_version }}/" arch/PKGBUILD
       - name: Update RPM spec version
         run: |
-          sed -i -E "s/^(Version:\W+).*/\1${{ steps.release_version.outputs.release_version }}/" dist/rpm/fedora.spec
+          sed -i -E "s/^(Version:\W+).*/\1${{ steps.release_version.outputs.release_version }}/" fedora/displayconfig-mutter.spec
+      - name: Update Debian changelog
+        env:
+          DEBEMAIL: eaglesemanation@gmail.com 
+          DEBFULLNAME: Vladimir Romashchenko
+        run: |
+           debchange \
+            -v ${{ steps.release_version.outputs.release_version }}-1 \
+            -D $(lsb_release -sc) -u low --package displayconfig-mutter \
+            "https://github.com/eaglesemanation/displayconfig-mutter/releases/tag/v${{ steps.release_version.outputs.release_version }}"
+
+      - run: cargo test
+      - name: Build x86_64
+        run: cargo build --release
+      - name: Build aarch64
+        run: cross build --release --target aarch64-unknown-linux-gnu
+      - name: Rename binaries
+        run: |
+          mkdir artifacts
+          mv target/release/displayconfig-mutter artifacts/displayconfig-mutter-x86_64
+          mv target/aarch64-unknown-linux-gnu/release/displayconfig-mutter artifacts/displayconfig-mutter-aarch64
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: Update release files to v${{ steps.release_version.outputs.release_version }}
+      - name: Get new commit id
+        id: commit_id
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "commit_id=${SHA}" >> "$GITHUB_OUTPUT"
       - uses: ncipollo/release-action@v1
         with:
           commit: main
           tag: v${{ steps.release_version.outputs.release_version }}
           generateReleaseNotes: true
           makeLatest: true
+          artifacts: artifacts/*
 
   publish-aur:
     runs-on: ubuntu-latest
@@ -60,13 +89,39 @@ jobs:
     container: archlinux:base-devel
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-and-patch.outputs.commit_id }}
       - uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
         with:
           pkgname: displayconfig-mutter
-          pkgbuild: dist/arch/PKGBUILD
+          pkgbuild: arch/PKGBUILD
           commit_username: eaglesemanation
           commit_email: eaglesemanation@gmail.com
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: Release ${{ needs.validate-and-patch.outputs.release_version }}
           updpkgsums: true
 
+  publish-launchpad:
+    runs-on: ubuntu-latest
+    needs: validate-and-patch
+    container: ubuntu:24.10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-and-patch.outputs.commit_id }}
+      - name: Install required packages
+        run: |
+          apt-get update
+          apt-get install -y devscripts equivs
+          mk-build-deps --install --remove --tool='apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y'
+      - name: Setup GPG
+        run: |
+          echo "${{ secrets.LAUNCHPAD_GPG_PRIVATE_KEY }}" | gpg --batch --import
+          gpg --list-keys
+      - name: Build source package
+        run: |
+          tar -czvf ../displayconfig-mutter_${{ needs.validate-and-patch.outputs.release_version }}.orig.tar.gz --exclude=debian --exclude=.git .
+          debuild -S -sa -k${{ vars.LAUNCHPAD_GPG_KEY_ID }}
+      - name: Upload to PPA
+        run: |
+          dput ppa:eaglesemanation/displayconfig-mutter ../*.changes

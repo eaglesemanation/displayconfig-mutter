@@ -2,8 +2,8 @@ use std::{cmp::Ordering, collections::HashSet};
 
 use anyhow::anyhow;
 use clap::Parser;
-use comfy_table::{presets::UTF8_FULL, Table};
 use displayconfig_mutter::{cli::{self, Cli}, display_config::{apply_monitors_config, get_current_state::{self, MonitorColorMode, RefreshRateMode}, DisplayConfigProxy}};
+use tabled::{builder::Builder, settings::{object::Rows, Alignment, Modify, Style}};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -87,11 +87,22 @@ async fn main() -> anyhow::Result<()> {
                     .find(|mode| 
                         mode.width as u32 == width && mode.height as u32 == height 
                         && mode.refresh_rate == refresh_rate 
-                        && mode.properties.refresh_rate_mode.is_none_or(|mode| mode == RefreshRateMode::Fixed))
+                        && (mode.properties.refresh_rate_mode.is_none() || mode.properties.refresh_rate_mode.is_some_and(|mode| mode == RefreshRateMode::Fixed)))
                     .expect("already matched a mode, but couldn't find one without VRR")
             };
 
-            let scale = args.scaling.map(|scale_precentage| scale_precentage as f64 / 100.0).unwrap_or(logical_monitor.scale);
+            let mut supported_scales = matching_mode.supported_scales.clone();
+            let wanted_scale = args.scaling.map(|scale_precent| scale_precent as f64 / 100.0).unwrap_or(logical_monitor.scale);
+            supported_scales.sort_by(|l, r| {
+                let l = (l * 100.0) as i32;
+                let r = (r * 100.0) as i32;
+                let wanted_scale = (wanted_scale * 100.0) as i32;
+                (l - wanted_scale as i32).abs().cmp(&(r - wanted_scale as i32).abs())
+            });
+            let scale = supported_scales.first().ok_or(anyhow!("display \"{}\" does not have any supported scales", args.connector))?;
+            if (wanted_scale * 4.0).round() != (scale * 4.0).round() {
+                return Err(anyhow!("display \"{}\" does not have any scale close to {}%", args.connector, (wanted_scale * 100.0) as u32));
+            }
 
             let hdr_supported = monitor.properties.supported_color_modes.as_ref().is_some_and(|modes| modes.contains(&MonitorColorMode::BT2100));
             let color_mode = args.hdr.map(|hdr| if hdr {MonitorColorMode::BT2100} else {MonitorColorMode::Default})
@@ -109,7 +120,7 @@ async fn main() -> anyhow::Result<()> {
                     apply_monitors_config::LogicalMonitor{
                         x: logical_monitor.x,
                         y: logical_monitor.y,
-                        scale: scale,
+                        scale: *scale,
                         transform: logical_monitor.transform,
                         primary: logical_monitor.primary,
                         monitors: vec![apply_monitors_config::Monitor {
@@ -134,10 +145,9 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn list_monitors(current_state: get_current_state::Response) -> anyhow::Result<()> {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL)
-        .set_header(vec!["Connector", "Vendor", "Product name", "Resolution", "Refresh rate", "Scaling", "VRR", "HDR"]);
+    let mut table_builder = Builder::new();
+    table_builder
+        .push_record(["Connector", "Vendor", "Product name", "Resolution", "Refresh rate", "Scaling", "VRR", "HDR"]);
     for monitor in current_state.monitors {
         let logical_monitor = current_state.logical_monitors.iter().find(|logical_monitor| logical_monitor.monitors.iter().any(|m| m.connector == monitor.id.connector));
         let scaling = match logical_monitor {
@@ -166,18 +176,21 @@ fn list_monitors(current_state: get_current_state::Response) -> anyhow::Result<(
             (true, _) => "Supported",
             _ => "No",
         };
-        table.add_row(vec![monitor.id.connector, monitor.id.vendor, monitor.id.product, resolution, refresh_rate, scaling, vrr.into(), hdr.into()]);
+        table_builder.push_record([monitor.id.connector, monitor.id.vendor, monitor.id.product, resolution, refresh_rate, scaling, vrr.into(), hdr.into()]);
     }
-    println!("{table}");
 
+    let mut table = table_builder.build();
+    table
+        .with(Style::modern())
+        .with(Modify::new(Rows::new(1..)).with(Alignment::left()));
+    println!("{table}");
     Ok(())
 }
 
 fn list_modes(current_state: get_current_state::Response, connector: impl AsRef<str>) -> anyhow::Result<()> {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL)
-        .set_header(vec!["Connector", "Resolutions", "Refresh rates", "Scales"]);
+    let mut table_builder = Builder::new();
+    table_builder
+        .push_record(["Connector", "Resolutions", "Refresh rates", "Scales"]);
     let monitor = current_state.monitors.iter().find(|monitor| monitor.id.connector == connector.as_ref()).ok_or(anyhow!("Could not find a monitor with \"{}\" as a connector", connector.as_ref()))?;
 
     let mut resolutions = HashSet::new();
@@ -204,12 +217,17 @@ fn list_modes(current_state: get_current_state::Response, connector: impl AsRef<
     let mut scales: Vec<_> = scales.into_iter().collect();
     scales.sort();
     scales.reverse();
-    table.add_row(vec![
+    table_builder.push_record([
         connector.as_ref().to_string(), 
         resolutions.into_iter().map(|(width, height)| format!("{width}x{height}")).collect::<Vec<_>>().join("\n"), 
         refresh_rates.iter().map(u32::to_string).collect::<Vec<_>>().join("\n"),
         scales.join("\n"),
     ]);
+
+    let mut table = table_builder.build();
+    table
+        .with(Style::modern())
+        .with(Modify::new(Rows::new(1..)).with(Alignment::left()));
     println!("{table}");
     Ok(())
 }
