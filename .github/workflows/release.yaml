@@ -8,6 +8,9 @@ on:
         required: true
         type: string
 
+env:
+  UBUNTU_24_10_NAME: oracular
+
 jobs:
   validate-and-patch:
     runs-on: ubuntu-latest
@@ -53,8 +56,16 @@ jobs:
         run: |
            debchange \
             -v ${{ steps.release_version.outputs.release_version }}-1 \
-            -D $(lsb_release -sc) -u low --package displayconfig-mutter \
+            -D $UBUNTU_24_10_NAME -u low --package displayconfig-mutter \
             "https://github.com/eaglesemanation/displayconfig-mutter/releases/tag/v${{ steps.release_version.outputs.release_version }}"
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Update release files to v${{ steps.release_version.outputs.release_version }}
+      - name: Get new commit id
+        id: commit_id
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "commit_id=${SHA}" >> "$GITHUB_OUTPUT"
 
       - run: cargo test
       - name: Build x86_64
@@ -67,14 +78,6 @@ jobs:
           mv target/release/displayconfig-mutter artifacts/displayconfig-mutter-x86_64
           mv target/aarch64-unknown-linux-gnu/release/displayconfig-mutter artifacts/displayconfig-mutter-aarch64
 
-      - uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: Update release files to v${{ steps.release_version.outputs.release_version }}
-      - name: Get new commit id
-        id: commit_id
-        run: |
-          SHA=$(git rev-parse HEAD)
-          echo "commit_id=${SHA}" >> "$GITHUB_OUTPUT"
       - uses: ncipollo/release-action@v1
         with:
           commit: main
@@ -120,8 +123,9 @@ jobs:
           gpg --list-keys
       - name: Build source package
         run: |
-          tar -czvf ../displayconfig-mutter_${{ needs.validate-and-patch.outputs.release_version }}.orig.tar.gz --exclude=debian --exclude=.git .
+          tar -czvf ../displayconfig-mutter_${{ needs.validate-and-patch.outputs.release_version }}.orig.tar.gz \
+            --exclude=debian --exclude=fedora --exclude=arch --exclude=.git .
           debuild -S -sa -k${{ vars.LAUNCHPAD_GPG_KEY_ID }}
       - name: Upload to PPA
         run: |
-          dput ppa:eaglesemanation/displayconfig-mutter ../*.changes
+          dput -f ppa:eaglesemanation/displayconfig-mutter ../*.changes

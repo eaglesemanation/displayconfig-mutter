@@ -54,14 +54,22 @@ nix run github:eaglesemanation/displayconfig-mutter -- help
 ```
 
 ### Arch Linux
-Available through AUR. You can clone it and build it manually, or use one of many AUR helpers, such as [yay](https://github.com/Jguer/yay)
+Available through [AUR](https://aur.archlinux.org/packages/displayconfig-mutter). You can clone it and build it manually, or use one of many AUR helpers, such as [yay](https://github.com/Jguer/yay)
 ```
 yay -S displayconfig-mutter
 ```
 
 ### Fedora Linux
-Available through COPR.
+Available through [COPR](https://copr.fedorainfracloud.org/coprs/eaglesemanation/displayconfig-mutter/).
 ```
-dnf copr enable eaglesemanation/displayconfig-mutter
-dnf install displayconfig-mutter
+sudo dnf copr enable eaglesemanation/displayconfig-mutter
+sudo dnf install displayconfig-mutter
+```
+
+### Ubuntu
+Available through [Launchpad PPA](https://launchpad.net/~eaglesemanation/+archive/ubuntu/displayconfig-mutter).
+```
+sudo add-apt-repository ppa:eaglesemanation/displayconfig-mutter
+sudo apt update
+sudo apt install displayconfig-mutter
 ```
