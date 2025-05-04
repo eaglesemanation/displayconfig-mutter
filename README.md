@@ -2,6 +2,8 @@
 
 `xrandr` like app for Gnome DE in Wayland mode. Allows modifying most parameters that are exposed in "Displays" settings.
 
+Go to [installation instructions](#installation).
+
 ```
 # displayconfig-mutter --help
 Usage: displayconfig-mutter <COMMAND>
@@ -66,10 +68,18 @@ sudo dnf copr enable eaglesemanation/displayconfig-mutter
 sudo dnf install displayconfig-mutter
 ```
 
-### Ubuntu
+### Ubuntu / Linux Mint
 Available through [Launchpad PPA](https://launchpad.net/~eaglesemanation/+archive/ubuntu/displayconfig-mutter).
 ```
 sudo add-apt-repository ppa:eaglesemanation/displayconfig-mutter
 sudo apt update
 sudo apt install displayconfig-mutter
+```
+
+### Others
+Releases page contains pre-built binaries for x86_64 (Intel / AMD) and aarch64 (ARM) processors. You can install them on most distros by running this:
+```
+curl "https://github.com/eaglesemanation/displayconfig-mutter/releases/latest/download/displayconfig-mutter-$(uname -m)" -L -o displayconfig-mutter \
+  && sudo install -Dm0755 displayconfig-mutter /usr/local/bin/displayconfig-mutter \
+  && rm displayconfig-mutter
 ```
