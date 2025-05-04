@@ -5,7 +5,7 @@
 %global cargo_install_lib 0
 
 Name:           displayconfig-mutter
-Version:        0.1.2
+Version:        0.1.3
 Release:        %autorelease
 Summary:        Change Gnome display settings from cli
 License:        MIT
