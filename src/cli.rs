@@ -40,7 +40,7 @@ pub struct SetArgs {
     /// New monitor refresh rate. This is selected on a best effort basis. e.g. if you
     /// select 60Hz, while monitor only supports 59.98Hz, it will be selected instead.
     #[arg(long, group = "refresh")]
-    pub refresh_rate: Option<u32>,
+    pub refresh_rate: Option<f64>,
     /// Automatically select highest refresh rate for selected resolution
     #[arg(long, group = "refresh")]
     pub max_refresh_rate: bool,

@@ -50,43 +50,42 @@ async fn main() -> anyhow::Result<()> {
                 _ => (current_mode.width as u32, current_mode.height as u32),
             };
 
+            let mut available_refresh_rates: Vec<_> = available_modes.iter().filter_map(|mode| {
+                if mode.width as u32 == width && mode.height as u32 == height {
+                    Some(mode.refresh_rate)
+                } else {
+                    None
+                }
+            }).collect();
+            let refresh_rate_cmp = |l: &f64, r: &f64, target: f64| {
+                let l = (l - target).abs() * 100.0;
+                let r = (r - target).abs() * 100.0;
+                (l as u32).cmp(&(r as u32))
+            };
             let refresh_rate = match (args.max_refresh_rate, args.refresh_rate) {
-                (true, _) => available_modes
-                        .iter().find_map(|mode| {
-                            if mode.width as u32 == width && mode.height as u32 == height {
-                                Some(mode.refresh_rate)
-                            } else {
-                                None
-                            }
-                        }).ok_or(anyhow!("could not find any refresh rate for {}x{} resolution", width, height))?,
-                (_, Some(refresh_rate)) => available_modes.iter().find_map(|mode| {
-                        if mode.width as u32 == width && mode.height as u32 == height && mode.refresh_rate.round_ties_even() as u32 == refresh_rate {
-                            Some(mode.refresh_rate)
-                        } else {
-                            None
-                        }
-                    }).ok_or(anyhow!("could not find refresh rate for {}x{} resolution that is close to {}", width, height, refresh_rate))?,
-                _ => available_modes.iter().find_map(|mode| {
-                        if mode.width as u32 == width && mode.height as u32 == height && mode.refresh_rate.round_ties_even() as u32 == current_mode.refresh_rate.round_ties_even() as u32 {
-                            Some(mode.refresh_rate)
-                        } else {
-                            None
-                        }
-                    }).ok_or(anyhow!("could not find refresh rate for {}x{} resolution that is close to current one", width, height))?,
+                (true, _) => available_refresh_rates.first().ok_or(anyhow!("could not find any refresh rate for {}x{} resolution", width, height))?,
+                (_, Some(refresh_rate)) => {
+                    available_refresh_rates.sort_by(|l, r| refresh_rate_cmp(l, r, refresh_rate));
+                    available_refresh_rates.first().ok_or(anyhow!("could not find refresh rate for {}x{} resolution that is close to {}", width, height, refresh_rate))?
+                },
+                _ => {
+                    available_refresh_rates.sort_by(|l, r| refresh_rate_cmp(l, r, current_mode.refresh_rate));
+                    available_refresh_rates.first().ok_or(anyhow!("could not find refresh rate for {}x{} resolution that is close to current one", width, height))?
+                }
             };
 
             let matching_mode = if args.vrr.is_some_and(|flag| flag) {
                 available_modes.iter()
                     .find(|mode| 
                         mode.width as u32 == width && mode.height as u32 == height 
-                        && mode.refresh_rate == refresh_rate 
+                        && mode.refresh_rate == *refresh_rate 
                         && mode.properties.refresh_rate_mode.is_some_and(|mode| mode == RefreshRateMode::Variable))
                     .ok_or(anyhow!("VRR is not available"))?
             } else {
                 available_modes.iter()
                     .find(|mode| 
                         mode.width as u32 == width && mode.height as u32 == height 
-                        && mode.refresh_rate == refresh_rate 
+                        && mode.refresh_rate == *refresh_rate 
                         && (mode.properties.refresh_rate_mode.is_none() || mode.properties.refresh_rate_mode.is_some_and(|mode| mode == RefreshRateMode::Fixed)))
                     .expect("already matched a mode, but couldn't find one without VRR")
             };
@@ -216,7 +215,6 @@ fn list_modes(current_state: get_current_state::Response, connector: impl AsRef<
     refresh_rates.reverse();
     let mut scales: Vec<_> = scales.into_iter().collect();
     scales.sort();
-    scales.reverse();
     table_builder.push_record([
         connector.as_ref().to_string(), 
         resolutions.into_iter().map(|(width, height)| format!("{width}x{height}")).collect::<Vec<_>>().join("\n"), 
