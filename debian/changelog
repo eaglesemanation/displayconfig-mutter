@@ -1,3 +1,10 @@
+displayconfig-mutter (0.1.5-1) oracular; urgency=low
+
+  * https://github.com/eaglesemanation/displayconfig-
+    mutter/releases/tag/v0.1.5
+
+ -- Vladimir Romashchenko <eaglesemanation@gmail.com>  Wed, 09 Jul 2025 10:25:17 +0000
+
 displayconfig-mutter (0.1.4-1) oracular; urgency=low
 
   * https://github.com/eaglesemanation/displayconfig-
