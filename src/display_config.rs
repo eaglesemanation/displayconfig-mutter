@@ -33,13 +33,15 @@ pub mod get_current_state {
     }
 
     /**
-    * Represents in what way logical monitors are laid
-    * out on the screen. The layout mode can be either
-    * of the ones listed below. Absence of this property
-    * means the layout mode cannot be changed, and that
-    * "logical" mode is assumed to be used.
-    */
-    #[derive(Debug, Type, PartialEq, Eq, Default, Clone, Copy, Serialize_repr, Deserialize_repr)]
+     * Represents in what way logical monitors are laid
+     * out on the screen. The layout mode can be either
+     * of the ones listed below. Absence of this property
+     * means the layout mode cannot be changed, and that
+     * "logical" mode is assumed to be used.
+     */
+    #[derive(
+        Debug, Type, PartialEq, Eq, Default, Clone, Copy, Serialize_repr, Deserialize_repr,
+    )]
     #[repr(u32)]
     pub enum LayoutMode {
         /// the dimension of a logical monitor is derived from the monitor modes associated with it, then scaled using the logical monitor scale.
@@ -58,7 +60,6 @@ pub mod get_current_state {
         /// optional properties
         pub properties: MonitorProperties,
     }
-
 
     #[derive(Debug, Clone, Type, Serialize, Deserialize)]
     pub struct MonitorId {
@@ -116,13 +117,15 @@ pub mod get_current_state {
         pub supported_color_modes: Option<Vec<MonitorColorMode>>,
     }
 
-    #[derive(Debug, Type, PartialEq, Eq, Default, Clone, Copy, Serialize_repr, Deserialize_repr)]
+    #[derive(
+        Debug, Type, PartialEq, Eq, Default, Clone, Copy, Serialize_repr, Deserialize_repr,
+    )]
     #[repr(u32)]
     pub enum MonitorColorMode {
         #[default]
         Default = 0,
         /// HDR
-        BT2100 = 1
+        BT2100 = 1,
     }
 
     #[derive(Debug, Clone, Type, Serialize, Deserialize)]
@@ -145,7 +148,10 @@ pub mod get_current_state {
 
     impl PartialEq for Mode {
         fn eq(&self, other: &Self) -> bool {
-            self.width == other.width && self.height == other.height && self.refresh_rate == other.refresh_rate && self.properties.refresh_rate_mode == other.properties.refresh_rate_mode
+            self.width == other.width
+                && self.height == other.height
+                && self.refresh_rate == other.refresh_rate
+                && self.properties.refresh_rate_mode == other.properties.refresh_rate_mode
         }
     }
     impl Eq for Mode {}
@@ -158,28 +164,34 @@ pub mod get_current_state {
     impl Ord for Mode {
         fn cmp(&self, other: &Self) -> cmp::Ordering {
             match self.width.cmp(&other.width) {
-                cmp::Ordering::Equal => {},
+                cmp::Ordering::Equal => {}
                 ord => return ord,
             }
             match self.height.cmp(&other.height) {
-                cmp::Ordering::Equal => {},
+                cmp::Ordering::Equal => {}
                 ord => return ord,
             }
-            match (self.refresh_rate.round_ties_even() as u32).cmp(&(other.refresh_rate.round_ties_even() as u32)) {
-                cmp::Ordering::Equal => {},
+            match (self.refresh_rate.round_ties_even() as u32)
+                .cmp(&(other.refresh_rate.round_ties_even() as u32))
+            {
+                cmp::Ordering::Equal => {}
                 ord => return ord,
             }
-            self.properties.refresh_rate_mode.cmp(&other.properties.refresh_rate_mode)
+            self.properties
+                .refresh_rate_mode
+                .cmp(&other.properties.refresh_rate_mode)
         }
     }
 
-    #[derive(Debug, Type, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Default, Serialize, Deserialize)]
+    #[derive(
+        Debug, Type, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Default, Serialize, Deserialize,
+    )]
     #[serde(rename_all = "lowercase")]
     #[zvariant(signature = "s")]
     pub enum RefreshRateMode {
         #[default]
         Fixed,
-        Variable
+        Variable,
     }
 
     #[derive(Debug, Clone, Type, SerializeDict, DeserializeDict)]
@@ -200,7 +212,9 @@ pub mod get_current_state {
     }
 
     /// logical monitor transform
-    #[derive(Debug, Type, PartialEq, Eq, Default, Clone, Copy, Serialize_repr, Deserialize_repr)]
+    #[derive(
+        Debug, Type, PartialEq, Eq, Default, Clone, Copy, Serialize_repr, Deserialize_repr,
+    )]
     #[repr(u32)]
     pub enum LogicalMonitorTransform {
         #[default]
@@ -242,7 +256,9 @@ pub mod apply_monitors_config {
     use serde_repr::{Deserialize_repr, Serialize_repr};
     use zbus::zvariant::{DeserializeDict, SerializeDict, Type};
 
-    use super::get_current_state::{LayoutMode, LogicalMonitorTransform, MonitorColorMode, MonitorId};
+    use super::get_current_state::{
+        LayoutMode, LogicalMonitorTransform, MonitorColorMode, MonitorId,
+    };
 
     /// may effect the global monitor configuration state
     #[derive(Debug, DeserializeDict, SerializeDict, Type, Default)]
@@ -255,7 +271,9 @@ pub mod apply_monitors_config {
     }
 
     /// represents the way the configuration should be handled
-    #[derive(Debug, Type, PartialEq, Eq, Default, Clone, Copy, Serialize_repr, Deserialize_repr)]
+    #[derive(
+        Debug, Type, PartialEq, Eq, Default, Clone, Copy, Serialize_repr, Deserialize_repr,
+    )]
     #[repr(u32)]
     pub enum Method {
         /// Check if provided arguments are valid
@@ -340,12 +358,7 @@ pub trait DisplayConfig {
 
     /// Backlight property
     #[zbus(property)]
-    fn backlight(
-        &self,
-    ) -> zbus::Result<(
-        u32,
-        Vec<HashMap<String, zbus::zvariant::OwnedValue>>,
-    )>;
+    fn backlight(&self) -> zbus::Result<(u32, Vec<HashMap<String, zbus::zvariant::OwnedValue>>)>;
 
     /// HasExternalMonitor property
     #[zbus(property)]
@@ -353,9 +366,7 @@ pub trait DisplayConfig {
 
     /// Luminance property
     #[zbus(property)]
-    fn luminance(
-        &self,
-    ) -> zbus::Result<Vec<HashMap<String, zbus::zvariant::OwnedValue>>>;
+    fn luminance(&self) -> zbus::Result<Vec<HashMap<String, zbus::zvariant::OwnedValue>>>;
 
     /// NightLightSupported property
     #[zbus(property)]

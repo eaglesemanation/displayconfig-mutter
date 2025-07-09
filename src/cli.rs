@@ -31,6 +31,9 @@ pub struct SetArgs {
     /// correct
     #[arg(short, long)]
     pub persistent: bool,
+    /// Sets given monitor as primary
+    #[arg(long)]
+    pub primary: bool,
     /// New resolution, e.g. 1920x1080, 3840x2160
     #[arg(short, long, group = "res", value_parser = resolution_parser)]
     pub resolution: Option<(u32, u32)>,
@@ -60,9 +63,13 @@ pub struct SetArgs {
 fn resolution_parser(s: &str) -> Result<(u32, u32), String> {
     let res: Vec<_> = s.split(&['x', 'X']).map(str::parse::<u32>).collect();
     if res.len() != 2 {
-        return Err(format!("could not parse resolution string, expected format is <widht>x<height>, e.g. 1920x1080"));
+        return Err("could not parse resolution string, expected format is <widht>x<height>, e.g. 1920x1080".to_string());
     }
-    let width = res[0].as_ref().map_err(|_| format!("could not parse resolution, width is not a number"))?;
-    let height = res[1].as_ref().map_err(|_| format!("could not parse resolution, height is not a number"))?;
+    let width = res[0]
+        .as_ref()
+        .map_err(|_| "could not parse resolution, width is not a number".to_string())?;
+    let height = res[1]
+        .as_ref()
+        .map_err(|_| "could not parse resolution, height is not a number".to_string())?;
     Ok((*width, *height))
 }

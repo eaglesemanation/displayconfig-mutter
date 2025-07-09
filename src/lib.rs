@@ -1,2 +1,2 @@
-pub mod display_config;
 pub mod cli;
+pub mod display_config;
