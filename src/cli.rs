@@ -50,7 +50,7 @@ pub struct SetArgs {
     /// Controls variable refresh rate
     #[arg(long)]
     pub vrr: Option<bool>,
-    /// UI Scaling, as precentage, e.g. 100, 150, 200. This is selected based on a closest
+    /// UI Scaling, as percentage, e.g. 100, 150, 200. This is selected based on a closest
     /// available scaling with a rounding step of 25%. e.g. if you select 125, while selected
     /// resolution only allows for either 124% or 149% - first one will be selected.
     #[arg(long)]
@@ -63,7 +63,7 @@ pub struct SetArgs {
 fn resolution_parser(s: &str) -> Result<(u32, u32), String> {
     let res: Vec<_> = s.split(&['x', 'X']).map(str::parse::<u32>).collect();
     if res.len() != 2 {
-        return Err("could not parse resolution string, expected format is <widht>x<height>, e.g. 1920x1080".to_string());
+        return Err("could not parse resolution string, expected format is <width>x<height>, e.g. 1920x1080".to_string());
     }
     let width = res[0]
         .as_ref()
