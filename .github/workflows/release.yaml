@@ -47,7 +47,8 @@ jobs:
           override: true
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-bump,cross
+          tool: cargo-edit,cross
+      - uses: Swatinem/rust-cache@v2
       - name: Install required packages
         run: |
           sudo apt-get update
@@ -55,7 +56,7 @@ jobs:
 
       - name: Update Cargo.toml version
         run: |
-          cargo bump ${{ steps.release_version.outputs.release_version }}
+          cargo set-version ${{ steps.release_version.outputs.release_version }}
       - name: Update PKGBUILD version 
         run: |
           sed -i -E "s/^(pkgver=).*/\1${{ steps.release_version.outputs.release_version }}/" arch/PKGBUILD
