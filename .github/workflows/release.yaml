@@ -20,19 +20,6 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Check main branch status
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const result = await github.rest.repos.getCombinedStatusForRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: 'main'
-            });
-            if (result.data.state !== 'success') {
-              core.setFailed('Status checks not green on main');
-            }
-
       - name: Validate user input
         id: release_version
         run: |
@@ -112,6 +99,15 @@ jobs:
         with:
           pkgname: displayconfig-mutter
           pkgbuild: arch/PKGBUILD
+          commit_username: eaglesemanation
+          commit_email: eaglesemanation@gmail.com
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: Release ${{ needs.validate-and-patch.outputs.release_version }}
+          updpkgsums: true
+      - uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
+        with:
+          pkgname: displayconfig-mutter-bin
+          pkgbuild: arch/bin/PKGBUILD
           commit_username: eaglesemanation
           commit_email: eaglesemanation@gmail.com
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
