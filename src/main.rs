@@ -80,7 +80,7 @@ async fn main() -> anyhow::Result<()> {
                 },
                 Some(first) => {
                     if logical_monitor_matches.next().is_some() {
-                        return Err(anyhow!("Logical monitor that manages \"{} {}\" ({}) has more than one monitor attached. That probably means it's mirrored, which is not suppored (yet?)", current_monitor.id.vendor, current_monitor.id.product, current_monitor.id.connector));
+                        return Err(anyhow!("Logical monitor that manages \"{} {}\" ({}) has more than one monitor attached. That probably means it's mirrored, which is not supported (yet?)", current_monitor.id.vendor, current_monitor.id.product, current_monitor.id.connector));
                     } else {
                         first
                     }
@@ -170,7 +170,7 @@ async fn main() -> anyhow::Result<()> {
             let mut supported_scales = matching_mode.supported_scales.clone();
             let wanted_scale = args
                 .scaling
-                .map(|scale_precent| scale_precent as f64 / 100.0)
+                .map(|scale_percent| scale_percent as f64 / 100.0)
                 .unwrap_or(updated_logical_monitor.scale);
             supported_scales.sort_by(|l, r| {
                 let l = (l * 100.0) as i32;

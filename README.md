@@ -43,7 +43,7 @@ Options:
       --refresh-rate <REFRESH_RATE>  New monitor refresh rate. This is selected on a best effort basis. e.g. if you select 60Hz, while monitor only supports 59.98Hz, it will be selected instead
       --max-refresh-rate             Automatically select highest refresh rate for selected resolution
       --vrr <VRR>                    Controls variable refresh rate [possible values: true, false]
-      --scaling <SCALING>            UI Scaling, as precentage, e.g. 100, 150, 200. This is selected based on a closest available scaling with a rounding step of 25%. e.g. if you select 125, while selected resolution only allows for either 124% or 149% - first one will be selected
+      --scaling <SCALING>            UI Scaling, as percentage, e.g. 100, 150, 200. This is selected based on a closest available scaling with a rounding step of 25%. e.g. if you select 125, while selected resolution only allows for either 124% or 149% - first one will be selected
       --hdr <HDR>                    Controls high dynamic range color mode [possible values: true, false]
   -h, --help                         Print help
 ```
