@@ -47,6 +47,7 @@ jobs:
       - name: Update PKGBUILD version 
         run: |
           sed -i -E "s/^(pkgver=).*/\1${{ steps.release_version.outputs.release_version }}/" arch/PKGBUILD
+          sed -i -E "s/^(pkgver=).*/\1${{ steps.release_version.outputs.release_version }}/" arch/bin/PKGBUILD
       - name: Update RPM spec version
         run: |
           sed -i -E "s/^(Version:\W+).*/\1${{ steps.release_version.outputs.release_version }}/" fedora/displayconfig-mutter.spec
