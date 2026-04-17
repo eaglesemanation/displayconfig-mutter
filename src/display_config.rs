@@ -126,6 +126,7 @@ pub mod get_current_state {
         Default = 0,
         /// HDR
         BT2100 = 1,
+        SDRNative = 2,
     }
 
     #[derive(Debug, Clone, Type, Serialize, Deserialize)]
