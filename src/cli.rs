@@ -55,7 +55,8 @@ pub struct SetArgs {
     /// resolution only allows for either 124% or 149% - first one will be selected.
     #[arg(long)]
     pub scaling: Option<u32>,
-    /// Controls high dynamic range color mode
+    /// Controls high dynamic range color mode. Kept for backwards compatability, use color-mode
+    /// instead
     #[arg(long, conflicts_with = "color_mode")]
     pub hdr: Option<bool>,
     /// Controls display color mode
