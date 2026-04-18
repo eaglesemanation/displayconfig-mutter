@@ -3,7 +3,7 @@ use std::{cmp::Ordering, collections::HashSet};
 use anyhow::anyhow;
 use clap::Parser;
 use displayconfig_mutter::{
-    cli::{self, Cli},
+    cli::{self, Cli, ColorMode},
     display_config::{
         apply_monitors_config,
         get_current_state::{self, LogicalMonitorTransform, MonitorColorMode, RefreshRateMode},
@@ -193,35 +193,41 @@ async fn main() -> anyhow::Result<()> {
             }
             updated_logical_monitor.scale = *scale;
 
-            let hdr_supported = current_monitor
+            let fallback_supported_color_modes = vec![MonitorColorMode::Default];
+            let supported_color_modes = current_monitor
                 .properties
                 .supported_color_modes
                 .as_ref()
-                .is_some_and(|modes| modes.contains(&MonitorColorMode::BT2100));
-            let color_mode = args
-                .hdr
-                .map(|hdr| {
+                .unwrap_or(&fallback_supported_color_modes);
+            let color_mode = match (args.hdr, args.color_mode) {
+                (None, None) => current_monitor
+                    .properties
+                    .color_mode
+                    .unwrap_or(MonitorColorMode::Default),
+                (Some(hdr), None) => {
                     if hdr {
                         MonitorColorMode::BT2100
                     } else {
                         MonitorColorMode::Default
                     }
-                })
-                .unwrap_or(
-                    current_monitor
-                        .properties
-                        .color_mode
-                        .unwrap_or(MonitorColorMode::Default),
-                );
-            updated_monitor.properties.color_mode = match (color_mode, hdr_supported) {
-                (MonitorColorMode::BT2100, false) => {
-                    return Err(anyhow!(
-                        "display \"{}\" does not support HDR",
-                        args.connector
-                    ))
                 }
-                (MonitorColorMode::Default, false) => None,
-                (mode, true) => Some(mode),
+                (None, Some(color_mode)) => match color_mode {
+                    ColorMode::SDR => MonitorColorMode::Default,
+                    ColorMode::HDR => MonitorColorMode::BT2100,
+                    ColorMode::SDRNative => MonitorColorMode::SDRNative,
+                },
+                (Some(_), Some(_)) => panic!("Clap allowed mutually exclusive flags"),
+            };
+
+            if !supported_color_modes.contains(&color_mode) {
+                return Err(anyhow!(
+                    "display \"{}\" does not support selected color mode",
+                    args.connector
+                ));
+            }
+            updated_monitor.properties.color_mode = match color_mode {
+                MonitorColorMode::Default => None,
+                mode => Some(mode),
             };
             let (updated_x, updated_y) = (updated_logical_monitor.x, updated_logical_monitor.y);
 

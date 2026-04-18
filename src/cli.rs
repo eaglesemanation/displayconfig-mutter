@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -56,8 +56,22 @@ pub struct SetArgs {
     #[arg(long)]
     pub scaling: Option<u32>,
     /// Controls high dynamic range color mode
-    #[arg(long)]
+    #[arg(long, conflicts_with = "color_mode")]
     pub hdr: Option<bool>,
+    /// Controls display color mode
+    #[arg(value_enum, long, conflicts_with = "hdr")]
+    pub color_mode: Option<ColorMode>,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum ColorMode {
+    /// sRGB SDR
+    #[default]
+    SDR,
+    /// HDR
+    HDR,
+    /// SDR with wide gammut
+    SDRNative,
 }
 
 fn resolution_parser(s: &str) -> Result<(u32, u32), String> {

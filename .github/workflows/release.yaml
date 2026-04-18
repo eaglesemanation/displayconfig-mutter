@@ -9,7 +9,7 @@ on:
         type: string
 
 env:
-  UBUNTU_24_10_NAME: oracular
+  UBUNTU_25_04_NAME: plucky
 
 jobs:
   validate-and-patch:
@@ -58,7 +58,7 @@ jobs:
         run: |
            debchange \
             -v ${{ steps.release_version.outputs.release_version }}-1 \
-            -D $UBUNTU_24_10_NAME -u low --package displayconfig-mutter \
+            -D $UBUNTU_25_04_NAME -u low --package displayconfig-mutter \
             "https://github.com/eaglesemanation/displayconfig-mutter/releases/tag/v${{ steps.release_version.outputs.release_version }}"
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:

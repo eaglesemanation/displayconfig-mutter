@@ -117,6 +117,7 @@ pub mod get_current_state {
         pub supported_color_modes: Option<Vec<MonitorColorMode>>,
     }
 
+    // https://gitlab.gnome.org/GNOME/mutter/-/blob/main/src/backends/meta-output.h#L45
     #[derive(
         Debug, Type, PartialEq, Eq, Default, Clone, Copy, Serialize_repr, Deserialize_repr,
     )]
@@ -126,6 +127,8 @@ pub mod get_current_state {
         Default = 0,
         /// HDR
         BT2100 = 1,
+        /// SDR with wide gammut
+        SDRNative = 2,
     }
 
     #[derive(Debug, Clone, Type, Serialize, Deserialize)]
@@ -318,6 +321,7 @@ pub mod apply_monitors_config {
     }
 }
 
+// https://gitlab.gnome.org/GNOME/mutter/-/blob/main/data/dbus-interfaces/org.gnome.Mutter.DisplayConfig.xml
 #[zbus::proxy(
     default_service = "org.gnome.Mutter.DisplayConfig",
     default_path = "/org/gnome/Mutter/DisplayConfig",
