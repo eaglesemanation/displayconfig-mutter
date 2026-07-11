@@ -56,7 +56,7 @@ async fn main() -> anyhow::Result<()> {
                     "could not find neither current mode nor preferred mode"
                 ))?;
 
-            let mut logical_monitors = new_logical_monitors(current_state.clone())?;
+            let mut logical_monitors = new_logical_monitors(&current_state)?;
             if args.primary {
                 for monitor in &mut logical_monitors {
                     monitor.primary = false;
@@ -354,16 +354,16 @@ fn match_color_mode(
 /// Produces a list of logical monitors in apply_monitors_config format that would keep the same
 /// configuration as current_state
 fn new_logical_monitors(
-    current_state: get_current_state::Response,
+    current_state: &get_current_state::Response,
 ) -> anyhow::Result<Vec<apply_monitors_config::LogicalMonitor>> {
     let mut out = vec![];
-    for logical_monitor in current_state.logical_monitors {
+    for logical_monitor in &current_state.logical_monitors {
         let mut monitors = vec![];
-        for monitor_id in logical_monitor.monitors {
+        for monitor_id in &logical_monitor.monitors {
             let monitor = current_state
                 .monitors
                 .iter()
-                .find(|monitor| monitor.id == monitor_id)
+                .find(|monitor| &monitor.id == monitor_id)
                 .ok_or(anyhow!(
                     "Logical monitor references \"{} {}\" ({}), but it's not found",
                     monitor_id.vendor,
@@ -381,7 +381,7 @@ fn new_logical_monitors(
                     monitor_id.connector
                 ))?;
             monitors.push(apply_monitors_config::Monitor {
-                connector: monitor_id.connector,
+                connector: monitor_id.connector.to_owned(),
                 mode: current_mode.id.clone(),
                 properties: apply_monitors_config::MonitorProperties {
                     underscanning: monitor.properties.is_underscanning,
