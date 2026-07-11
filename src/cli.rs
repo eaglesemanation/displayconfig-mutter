@@ -34,6 +34,9 @@ pub struct SetArgs {
     /// Sets given monitor as primary
     #[arg(long)]
     pub primary: bool,
+    /// Turns off given monitor
+    #[arg(long)]
+    pub disable: bool,
     /// New resolution, e.g. 1920x1080, 3840x2160
     #[arg(short, long, group = "res", value_parser = resolution_parser)]
     pub resolution: Option<(u32, u32)>,

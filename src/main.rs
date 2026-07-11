@@ -3,10 +3,12 @@ use std::{cmp::Ordering, collections::HashSet};
 use anyhow::anyhow;
 use clap::Parser;
 use displayconfig_mutter::{
-    cli::{self, Cli, ColorMode},
+    cli::{self, Cli, ColorMode, SetArgs},
     display_config::{
         apply_monitors_config,
-        get_current_state::{self, LogicalMonitorTransform, MonitorColorMode, RefreshRateMode},
+        get_current_state::{
+            self, LogicalMonitorTransform, Mode, MonitorColorMode, RefreshRateMode,
+        },
         DisplayConfigProxy,
     },
 };
@@ -30,12 +32,6 @@ async fn main() -> anyhow::Result<()> {
             };
         }
         cli::Command::Set(args) => {
-            let mut logical_monitors = new_noop_monitors(current_state.clone())?;
-            if args.primary {
-                for monitor in &mut logical_monitors {
-                    monitor.primary = false;
-                }
-            }
             let current_monitor = current_state
                 .monitors
                 .iter()
@@ -49,200 +45,138 @@ async fn main() -> anyhow::Result<()> {
             available_modes.reverse();
             let current_mode = available_modes
                 .iter()
-                .find(|mode| mode.properties.is_current.is_some_and(|f| f))
+                .find(|mode| mode.properties.is_current.is_some_and(|f| f));
+            let prefered_mode = current_mode
+                .or_else(|| {
+                    available_modes
+                        .iter()
+                        .find(|mode| mode.properties.is_preferred.is_some_and(|f| f))
+                })
                 .ok_or(anyhow!(
-                    "could not find current configuration of \"{}\"",
-                    args.connector
+                    "could not find neither current mode nor preferred mode"
                 ))?;
 
-            let mut logical_monitor_matches =
-                logical_monitors.iter_mut().filter(|logical_monitor| {
-                    logical_monitor
-                        .monitors
-                        .iter()
-                        .any(|monitor| monitor.connector == args.connector)
-                });
-            let updated_logical_monitor = match logical_monitor_matches.next() {
-                None => &mut apply_monitors_config::LogicalMonitor {
-                    x: 0,
-                    y: 0,
-                    scale: 1.0,
-                    transform: LogicalMonitorTransform::Normal,
-                    primary: false,
-                    monitors: vec![apply_monitors_config::Monitor {
-                        connector: current_monitor.id.connector.clone(),
-                        mode: current_mode.id.clone(),
-                        properties: apply_monitors_config::MonitorProperties {
-                            underscanning: current_monitor.properties.is_underscanning,
-                            color_mode: current_monitor.properties.color_mode,
-                        },
-                    }],
-                },
-                Some(first) => {
-                    if logical_monitor_matches.next().is_some() {
-                        return Err(anyhow!("Logical monitor that manages \"{} {}\" ({}) has more than one monitor attached. That probably means it's mirrored, which is not supported (yet?)", current_monitor.id.vendor, current_monitor.id.product, current_monitor.id.connector));
-                    } else {
-                        first
-                    }
-                }
-            };
+            let mut logical_monitors = new_logical_monitors(current_state.clone())?;
             if args.primary {
-                updated_logical_monitor.primary = true;
-            }
-            let updated_monitor = updated_logical_monitor.monitors.iter_mut().next().expect("Failed to validate that logical monitor has at least 1 monitor attached to it, aborting");
-
-            let (width, height) = match (args.max_resolution, args.resolution) {
-                (true, _) => available_modes
-                    .first()
-                    .map(|mode| (mode.width as u32, mode.height as u32))
-                    .ok_or(anyhow!("no modes available for \"{}\"", args.connector))?,
-                (_, Some(res)) => res,
-                _ => (current_mode.width as u32, current_mode.height as u32),
-            };
-
-            let mut available_refresh_rates: Vec<_> = available_modes
-                .iter()
-                .filter_map(|mode| {
-                    if mode.width as u32 == width && mode.height as u32 == height {
-                        Some(mode.refresh_rate)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            let refresh_rate_cmp = |l: &f64, r: &f64, target: f64| {
-                let l = (l - target).abs() * 100.0;
-                let r = (r - target).abs() * 100.0;
-                (l as u32).cmp(&(r as u32))
-            };
-            let refresh_rate = match (args.max_refresh_rate, args.refresh_rate) {
-                (true, _) => available_refresh_rates.first().ok_or(anyhow!(
-                    "could not find any refresh rate for {}x{} resolution",
-                    width,
-                    height
-                ))?,
-                (_, Some(refresh_rate)) => {
-                    available_refresh_rates.sort_by(|l, r| refresh_rate_cmp(l, r, refresh_rate));
-                    available_refresh_rates.first().ok_or(anyhow!(
-                        "could not find refresh rate for {}x{} resolution that is close to {}",
-                        width,
-                        height,
-                        refresh_rate
-                    ))?
+                for monitor in &mut logical_monitors {
+                    monitor.primary = false;
                 }
-                _ => {
-                    available_refresh_rates
-                        .sort_by(|l, r| refresh_rate_cmp(l, r, current_mode.refresh_rate));
-                    available_refresh_rates.first().ok_or(anyhow!("could not find refresh rate for {}x{} resolution that is close to current one", width, height))?
-                }
-            };
-
-            let matching_mode = if args.vrr.is_some_and(|flag| flag) {
-                available_modes
-                    .iter()
-                    .find(|mode| {
-                        mode.width as u32 == width
-                            && mode.height as u32 == height
-                            && mode.refresh_rate == *refresh_rate
-                            && mode
-                                .properties
-                                .refresh_rate_mode
-                                .is_some_and(|mode| mode == RefreshRateMode::Variable)
-                    })
-                    .ok_or(anyhow!("VRR is not available"))?
-            } else {
-                available_modes
-                    .iter()
-                    .find(|mode| {
-                        mode.width as u32 == width
-                            && mode.height as u32 == height
-                            && mode.refresh_rate == *refresh_rate
-                            && (mode.properties.refresh_rate_mode.is_none()
-                                || mode
-                                    .properties
-                                    .refresh_rate_mode
-                                    .is_some_and(|mode| mode == RefreshRateMode::Fixed))
-                    })
-                    .expect("already matched a mode, but couldn't find one without VRR")
-            };
-            updated_monitor.mode = matching_mode.id.clone();
-
-            let mut supported_scales = matching_mode.supported_scales.clone();
-            let wanted_scale = args
-                .scaling
-                .map(|scale_percent| scale_percent as f64 / 100.0)
-                .unwrap_or(updated_logical_monitor.scale);
-            supported_scales.sort_by(|l, r| {
-                let l = (l * 100.0) as i32;
-                let r = (r * 100.0) as i32;
-                let wanted_scale = (wanted_scale * 100.0) as i32;
-                (l - wanted_scale as i32)
-                    .abs()
-                    .cmp(&(r - wanted_scale as i32).abs())
-            });
-            let scale = supported_scales.first().ok_or(anyhow!(
-                "display \"{}\" does not have any supported scales",
-                args.connector
-            ))?;
-            if (wanted_scale * 4.0).round() != (scale * 4.0).round() {
-                return Err(anyhow!(
-                    "display \"{}\" does not have any scale close to {}%",
-                    args.connector,
-                    (wanted_scale * 100.0) as u32
-                ));
             }
-            updated_logical_monitor.scale = *scale;
 
-            let fallback_supported_color_modes = vec![MonitorColorMode::Default];
-            let supported_color_modes = current_monitor
-                .properties
-                .supported_color_modes
-                .as_ref()
-                .unwrap_or(&fallback_supported_color_modes);
-            let color_mode = match (args.hdr, args.color_mode) {
-                (None, None) => current_monitor
-                    .properties
-                    .color_mode
-                    .unwrap_or(MonitorColorMode::Default),
-                (Some(hdr), None) => {
-                    if hdr {
-                        MonitorColorMode::BT2100
-                    } else {
-                        MonitorColorMode::Default
+            let (
+                target_logical_monitor_idx,
+                mut target_width,
+                mut target_height,
+                target_x,
+                target_y,
+            ) = {
+                // Nested scope for mutating the target logical monitor without cloning
+                let mut logical_monitor_matches =
+                    logical_monitors.iter_mut().peekable().enumerate().filter(
+                        |(_, logical_monitor)| {
+                            logical_monitor
+                                .monitors
+                                .iter()
+                                .any(|monitor| monitor.connector == args.connector)
+                        },
+                    );
+                let (target_logical_monitor_idx, target_logical_monitor) =
+                    match logical_monitor_matches.next() {
+                        None => {
+                            // Logical monitor is not present for matched monitor, add new one
+                            logical_monitors.push(apply_monitors_config::LogicalMonitor {
+                                x: 0,
+                                y: 0,
+                                scale: 1.0,
+                                transform: LogicalMonitorTransform::Normal,
+                                primary: false,
+                                monitors: vec![apply_monitors_config::Monitor {
+                                    connector: current_monitor.id.connector.clone(),
+                                    mode: prefered_mode.id.clone(),
+                                    properties: apply_monitors_config::MonitorProperties {
+                                        underscanning: current_monitor.properties.is_underscanning,
+                                        color_mode: current_monitor.properties.color_mode,
+                                    },
+                                }],
+                            });
+                            (
+                                logical_monitors.len() - 1,
+                                logical_monitors.last_mut().unwrap(/* just pushed */),
+                            )
+                        }
+                        Some(first) => {
+                            if logical_monitor_matches.next().is_some() {
+                                return Err(anyhow!("Multiple logical monitors manage the same monitor \"{} {}\" ({}). I don't know how to handle this", current_monitor.id.vendor, current_monitor.id.product, current_monitor.id.connector));
+                            } else {
+                                first
+                            }
+                        }
+                    };
+                if args.primary {
+                    target_logical_monitor.primary = true;
+                }
+                let target_monitor = target_logical_monitor.monitors.iter_mut().next().expect("Failed to validate that logical monitor has at least 1 monitor attached to it, aborting");
+
+                let matching_mode = match_mode(&args, &available_modes, prefered_mode)?;
+                target_monitor.mode = matching_mode.id.clone();
+
+                target_logical_monitor.scale =
+                    match_scale(&args, matching_mode, target_logical_monitor.scale)?;
+
+                let color_mode = match_color_mode(
+                    &args,
+                    &current_monitor.properties.supported_color_modes,
+                    current_monitor.properties.color_mode,
+                )?;
+                target_monitor.properties.color_mode = match color_mode {
+                    MonitorColorMode::Default => None,
+                    mode => Some(mode),
+                };
+
+                (
+                    target_logical_monitor_idx,
+                    matching_mode.width,
+                    matching_mode.height,
+                    target_logical_monitor.x,
+                    target_logical_monitor.y,
+                )
+            };
+
+            if args.disable {
+                let dropped_primary = logical_monitors[target_logical_monitor_idx].primary;
+                logical_monitors.remove(target_logical_monitor_idx);
+                if dropped_primary {
+                    if let Some(mon) = logical_monitors.first_mut() {
+                        mon.primary = true;
                     }
                 }
-                (None, Some(color_mode)) => match color_mode {
-                    ColorMode::SDR => MonitorColorMode::Default,
-                    ColorMode::HDR => MonitorColorMode::BT2100,
-                    ColorMode::SDRNative => MonitorColorMode::SDRNative,
-                },
-                (Some(_), Some(_)) => panic!("Clap allowed mutually exclusive flags"),
-            };
-
-            if !supported_color_modes.contains(&color_mode) {
-                return Err(anyhow!(
-                    "display \"{}\" does not support selected color mode",
-                    args.connector
-                ));
+                target_width = 0;
+                target_height = 0;
             }
-            updated_monitor.properties.color_mode = match color_mode {
-                MonitorColorMode::Default => None,
-                mode => Some(mode),
-            };
-            let (updated_x, updated_y) = (updated_logical_monitor.x, updated_logical_monitor.y);
 
             logical_monitors.sort_by(|l, r| match l.y.cmp(&r.y) {
                 Ordering::Equal => l.x.cmp(&r.x),
                 cmp => cmp,
             });
-            let width_diff = width as i32 - current_mode.width;
-            let height_diff = height as i32 - current_mode.height;
-            for logical_monitor in &mut logical_monitors {
-                if logical_monitor.x > updated_x {
-                    logical_monitor.x += width_diff;
+            let (current_width, current_height) = {
+                if let Some(mode) = current_mode {
+                    (mode.width, mode.height)
+                } else {
+                    (0, 0)
                 }
-                if logical_monitor.y > updated_y {
-                    logical_monitor.y += height_diff;
+            };
+            // TODO: Research better algorithms for inserting rectangles in such a way that edges
+            // keep touching. This is me mostly guessing and probably misshandling a bunch of edge
+            // cases
+            for (idx, logical_monitor) in logical_monitors.iter_mut().enumerate() {
+                if idx == target_logical_monitor_idx && !args.disable {
+                    continue;
+                }
+                if logical_monitor.x > target_x || (target_x == 0 && logical_monitor.x >= 0) {
+                    logical_monitor.x += target_width - current_width;
+                }
+                if logical_monitor.y > target_y {
+                    logical_monitor.y += target_height - current_height;
                 }
             }
 
@@ -267,9 +201,159 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Find a best effort match of requested resolution + refresh rate + vrr, in that order
+fn match_mode<'a>(
+    args: &SetArgs,
+    available_modes: &'a [Mode],
+    current_mode: &Mode,
+) -> anyhow::Result<&'a Mode> {
+    let (width, height) = match (args.max_resolution, args.resolution) {
+        (true, _) => available_modes
+            .first()
+            .map(|mode| (mode.width as u32, mode.height as u32))
+            .ok_or(anyhow!("no modes available for \"{}\"", args.connector))?,
+        (_, Some(res)) => res,
+        _ => (current_mode.width as u32, current_mode.height as u32),
+    };
+
+    let mut available_refresh_rates: Vec<_> = available_modes
+        .iter()
+        .filter_map(|mode| {
+            if mode.width as u32 == width && mode.height as u32 == height {
+                Some(mode.refresh_rate)
+            } else {
+                None
+            }
+        })
+        .collect();
+    let refresh_rate_cmp = |l: &f64, r: &f64, target: f64| {
+        let l = (l - target).abs() * 100.0;
+        let r = (r - target).abs() * 100.0;
+        (l as u32).cmp(&(r as u32))
+    };
+    let refresh_rate = match (args.max_refresh_rate, args.refresh_rate) {
+        (true, _) => available_refresh_rates.first().ok_or(anyhow!(
+            "could not find any refresh rate for {}x{} resolution",
+            width,
+            height
+        ))?,
+        (_, Some(refresh_rate)) => {
+            available_refresh_rates.sort_by(|l, r| refresh_rate_cmp(l, r, refresh_rate));
+            available_refresh_rates.first().ok_or(anyhow!(
+                "could not find refresh rate for {}x{} resolution that is close to {}",
+                width,
+                height,
+                refresh_rate
+            ))?
+        }
+        _ => {
+            available_refresh_rates
+                .sort_by(|l, r| refresh_rate_cmp(l, r, current_mode.refresh_rate));
+            available_refresh_rates.first().ok_or(anyhow!(
+                "could not find refresh rate for {}x{} resolution that is close to current one",
+                width,
+                height
+            ))?
+        }
+    };
+
+    if args.vrr.is_some_and(|flag| flag) {
+        available_modes
+            .iter()
+            .find(|mode| {
+                mode.width as u32 == width
+                    && mode.height as u32 == height
+                    && mode.refresh_rate == *refresh_rate
+                    && mode
+                        .properties
+                        .refresh_rate_mode
+                        .is_some_and(|mode| mode == RefreshRateMode::Variable)
+            })
+            .ok_or(anyhow!("VRR is not available"))
+    } else {
+        available_modes
+            .iter()
+            .find(|mode| {
+                mode.width as u32 == width
+                    && mode.height as u32 == height
+                    && mode.refresh_rate == *refresh_rate
+                    && (mode.properties.refresh_rate_mode.is_none()
+                        || mode
+                            .properties
+                            .refresh_rate_mode
+                            .is_some_and(|mode| mode == RefreshRateMode::Fixed))
+            })
+            .ok_or(anyhow!(
+                "already matched a mode, but couldn't find one without VRR"
+            ))
+    }
+}
+
+/// Looks for a closest matching scale with rounding within 25%
+fn match_scale(args: &SetArgs, matching_mode: &Mode, current_scale: f64) -> anyhow::Result<f64> {
+    let mut supported_scales = matching_mode.supported_scales.clone();
+    let wanted_scale = args
+        .scaling
+        .map(|scale_percent| scale_percent as f64 / 100.0)
+        .unwrap_or(current_scale);
+    supported_scales.sort_by(|l, r| {
+        let l = (l * 100.0) as i32;
+        let r = (r * 100.0) as i32;
+        let wanted_scale = (wanted_scale * 100.0) as i32;
+        (l - wanted_scale).abs().cmp(&(r - wanted_scale).abs())
+    });
+    let scale = supported_scales.first().ok_or(anyhow!(
+        "display \"{}\" does not have any supported scales",
+        args.connector
+    ))?;
+    if (wanted_scale * 4.0).round() != (scale * 4.0).round() {
+        return Err(anyhow!(
+            "display \"{}\" does not have any scale close to {}%",
+            args.connector,
+            (wanted_scale * 100.0) as u32
+        ));
+    }
+    Ok(*scale)
+}
+
+fn match_color_mode(
+    args: &SetArgs,
+    supported_color_modes: &Option<Vec<MonitorColorMode>>,
+    current_color_mode: Option<MonitorColorMode>,
+) -> anyhow::Result<MonitorColorMode> {
+    let fallback_color_modes = vec![MonitorColorMode::Default];
+    let supported_color_modes = supported_color_modes
+        .as_ref()
+        .unwrap_or(&fallback_color_modes);
+    let color_mode = match (args.hdr, args.color_mode) {
+        (None, None) => current_color_mode.unwrap_or(MonitorColorMode::Default),
+        (Some(hdr), None) => {
+            if hdr {
+                MonitorColorMode::BT2100
+            } else {
+                MonitorColorMode::Default
+            }
+        }
+        (None, Some(color_mode)) => match color_mode {
+            ColorMode::SDR => MonitorColorMode::Default,
+            ColorMode::HDR => MonitorColorMode::BT2100,
+            ColorMode::SDRNative => MonitorColorMode::SDRNative,
+        },
+        (Some(_), Some(_)) => panic!("Clap allowed mutually exclusive flags"),
+    };
+
+    if !supported_color_modes.contains(&color_mode) {
+        return Err(anyhow!(
+            "display \"{}\" does not support selected color mode",
+            args.connector
+        ));
+    }
+    Ok(color_mode)
+}
+
 /// Produces a list of logical monitors in apply_monitors_config format that would keep the same
 /// configuration as current_state
-fn new_noop_monitors(
+fn new_logical_monitors(
     current_state: get_current_state::Response,
 ) -> anyhow::Result<Vec<apply_monitors_config::LogicalMonitor>> {
     let mut out = vec![];
