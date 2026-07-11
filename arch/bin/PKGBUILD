@@ -1,7 +1,7 @@
 # Maintainer: Vladimir Romashchenko <eaglesemanation@gmail.com>
 pkgname=displayconfig-mutter-bin
 _pkgname=displayconfig-mutter
-pkgver=0.1.9
+pkgver=0.1.10
 pkgrel=1
 pkgdesc="Change Gnome display settings from cli"
 arch=("x86_64" "aarch64")

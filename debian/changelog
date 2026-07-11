@@ -1,3 +1,10 @@
+displayconfig-mutter (0.1.10-1) quokka; urgency=low
+
+  * https://github.com/eaglesemanation/displayconfig-
+    mutter/releases/tag/v0.1.10
+
+ -- Vladimir Romashchenko <eaglesemanation@gmail.com>  Sat, 11 Jul 2026 16:51:04 +0000
+
 displayconfig-mutter (0.1.9-1) quokka; urgency=low
 
   * https://github.com/eaglesemanation/displayconfig-
