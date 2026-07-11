@@ -16,9 +16,9 @@ pub enum Command {
     /// Set config
     Set(SetArgs),
     /// Save the current logical monitor configuration to a file
-    SaveFile(GetRawArgs),
+    SaveFile(SaveFileArgs),
     /// Load the logical monitor configuration from a file
-    LoadFile(SetRawArgs),
+    LoadFile(LoadFileArgs),
 }
 
 #[derive(Debug, Args)]
@@ -74,13 +74,13 @@ pub struct SetArgs {
 }
 
 #[derive(Debug, Args)]
-pub struct GetRawArgs {
+pub struct SaveFileArgs {
     /// Save data to this file
     pub file_path: PathBuf,
 }
 
 #[derive(Debug, Args)]
-pub struct SetRawArgs {
+pub struct LoadFileArgs {
     /// Load data from this file
     pub file_path: PathBuf,
     /// Save config to the disk after applying it. Will prompt for user input to verify if it's
