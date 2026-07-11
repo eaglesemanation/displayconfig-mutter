@@ -179,6 +179,13 @@ async fn main() -> anyhow::Result<()> {
                     logical_monitor.y += target_height - current_height;
                 }
             }
+            // Normalize coordinates to be non-negative
+            let min_x = logical_monitors.iter().map(|l| l.x).min().unwrap_or(0);
+            let min_y = logical_monitors.iter().map(|l| l.y).min().unwrap_or(0);
+            for logical_monitor in logical_monitors.iter_mut() {
+                logical_monitor.x -= min_x;
+                logical_monitor.y -= min_y;
+            }
 
             proxy
                 .apply_monitors_config(
