@@ -16,6 +16,12 @@ use tabled::{
     builder::Builder,
     settings::{object::Rows, Alignment, Modify, Style},
 };
+use tokio::fs;
+use zbus::zvariant::{
+    self,
+    serialized::{Context, Data},
+    LE,
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -179,6 +185,42 @@ async fn main() -> anyhow::Result<()> {
                     logical_monitor.y += target_height - current_height;
                 }
             }
+
+            proxy
+                .apply_monitors_config(
+                    current_state.serial,
+                    if args.persistent {
+                        apply_monitors_config::Method::Persistent
+                    } else {
+                        apply_monitors_config::Method::Temporary
+                    },
+                    logical_monitors,
+                    apply_monitors_config::Properties {
+                        layout_mode: None,
+                        monitors_for_lease: None,
+                    },
+                )
+                .await?;
+        }
+        cli::Command::SaveFile(args) => {
+            let logical_monitors = new_logical_monitors(&current_state)?;
+
+            let context = Context::new_dbus(LE, 0);
+            let encoded = zvariant::to_bytes(context, &logical_monitors)?;
+
+            if let Some(parent) = args.file_path.parent() {
+                fs::create_dir_all(parent).await?;
+            }
+            fs::write(args.file_path, encoded).await?;
+        }
+        cli::Command::LoadFile(args) => {
+            let encoded = fs::read(args.file_path).await?;
+
+            let context = Context::new_dbus(LE, 0);
+            let data = Data::new(encoded, context);
+
+            let logical_monitors: Vec<apply_monitors_config::LogicalMonitor> =
+                data.deserialize()?.0;
 
             proxy
                 .apply_monitors_config(

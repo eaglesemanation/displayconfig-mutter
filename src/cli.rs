@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Parser)]
@@ -13,6 +15,10 @@ pub enum Command {
     List(ListArgs),
     /// Set config
     Set(SetArgs),
+    /// Save the current logical monitor configuration to a file
+    SaveFile(GetRawArgs),
+    /// Load the logical monitor configuration from a file
+    LoadFile(SetRawArgs),
 }
 
 #[derive(Debug, Args)]
@@ -65,6 +71,22 @@ pub struct SetArgs {
     /// Controls display color mode
     #[arg(value_enum, long, conflicts_with = "hdr")]
     pub color_mode: Option<ColorMode>,
+}
+
+#[derive(Debug, Args)]
+pub struct GetRawArgs {
+    /// Save data to this file
+    pub file_path: PathBuf,
+}
+
+#[derive(Debug, Args)]
+pub struct SetRawArgs {
+    /// Load data from this file
+    pub file_path: PathBuf,
+    /// Save config to the disk after applying it. Will prompt for user input to verify if it's
+    /// correct
+    #[arg(short, long)]
+    pub persistent: bool,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
